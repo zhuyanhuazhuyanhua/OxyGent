@@ -85,12 +85,21 @@ class FunctionHub(BaseTool):
                 async def async_func(*args, **kwargs):
                     # Use thread pool for blocking synchronous operations
                     loop = asyncio.get_event_loop()
-                    return await loop.run_in_executor(
-                        self.thread_pool,
-                        func,
-                        *args,
-                        **kwargs
-                    )
+                    if kwargs:
+                        # 如果有kwargs，使用functools.partial包装函数
+                        partial_func = functools.partial(func, **kwargs)
+                        return await loop.run_in_executor(
+                            self.thread_pool,
+                            partial_func,
+                            *args
+                        )
+                    else:
+                        # 如果没有kwargs，直接调用
+                        return await loop.run_in_executor(
+                            self.thread_pool,
+                            func,
+                            *args
+                        )
 
             # Register function in the hub's dictionary
             self.func_dict[func.__name__] = (description, async_func)
@@ -102,4 +111,4 @@ class FunctionHub(BaseTool):
         """Clean up resources, including the thread pool."""
         if self._thread_pool:
             self._thread_pool.shutdown(wait=True)
-        await super().cleanup()
+            self._thread_pool = None
