@@ -128,11 +128,14 @@ class HttpLLM(RemoteLLM):
                                 },
                             )
                         if use_openai:
-                            delta = chunk["choices"][0]["delta"].get(
-                                "content", ""
-                            ) or chunk["choices"][0]["delta"].get(
-                                "reasoning_content", ""
-                            )
+                            if chunk["choices"]:
+                                delta = chunk["choices"][0]["delta"].get(
+                                    "content", ""
+                                ) or chunk["choices"][0]["delta"].get(
+                                    "reasoning_content", ""
+                                )
+                            else:
+                                delta = ""
                         else:
                             delta = chunk.get("message", {}).get(
                                 "content", ""
@@ -147,9 +150,18 @@ class HttpLLM(RemoteLLM):
                                         "agent": oxy_request.caller,
                                         "node_id": oxy_request.node_id,
                                     },
-                                    "_is_stored": False,
                                 }
                             )
+                await oxy_request.send_message(
+                    {
+                        "type": "stream_end",
+                        "content": {
+                            "delta": "",
+                            "agent": oxy_request.caller,
+                            "node_id": oxy_request.node_id,
+                        },
+                    }
+                )
             result = "".join(result_parts)
             return OxyResponse(state=OxyState.COMPLETED, output=result)
 

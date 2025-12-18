@@ -9,13 +9,44 @@
 
 ---
 
-## [1.0.9.2] - 2025-12-04
+## [1.0.10.1] - 2025-12-17
 
 ### Added
-- 打印payload日志
-- history表存储时，memory的answer字段强转str
+- 新增用户反馈接口/feedback，用于实现human-in-the-loop，详见 [./examples/backend/demo_human_in_the_loop.py](./examples/backend/demo_human_in_the_loop.py)
+
+---
+
+## [1.0.9.3] - 2025-12-12
+
+### Added
+- 新增oxy.BaseLLM参数，支持自定义多模态base64前缀
+- MAS类新增func_process_message方法，用于统一处理消息，详见 [./examples/backend/demo_process_message.py](./examples/backend/demo_process_message.py)
+
+### Fixed
+- chat_with_agent函数入参send_msg_key参数为空时，修改为不发送消息
+
+---
+
+## [1.0.9.2] - 2025-12-09
+
+### Added
+- 新增流式消息结束标识的stream_end消息
+- stream消息支持分批存储
+
+### Changed
+- 修改message表结构，新增字段
+
+---
+
+## [1.0.9.1] - 2025-12-04
+
+### Added
+- 前置打印payload日志，便于排除
 - 标准化sse消息字段id、event、data
 - SSEOxyGent透传headers
+
+### Changed
+- history表存储时，memory的answer字段强转str
 
 ---
 

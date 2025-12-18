@@ -96,6 +96,7 @@ class OxyRequest(BaseModel):
     node_id: Optional[str] = Field("", description="")
 
     is_save_history: bool = Field(True, description="whether history is saved")
+    is_send_message: bool = Field(True, description="whether message is send")
     is_async_storage: bool = Field(True, description="whether async storage is used")
 
     parallel_id: Optional[str] = Field("", description="")
@@ -354,14 +355,17 @@ class OxyRequest(BaseModel):
         return await self.get_oxy(self.callee).execute(self)
 
     async def send_message(self, message=None, event=None, id=None):
-        if self.mas:
-            args = {"id": id, "event": event, "data": message}
-            filtered_args = {k: v for k, v in args.items() if v is not None}
-            sse_message = SSEMessage(**filtered_args)
+        if self.mas and self.is_send_message:
+            dict_message = {"id": id, "event": event, "data": message}
+            dict_message_processed = self.mas.func_process_message(dict_message, self)
+            dict_message_filtered = {
+                k: v for k, v in dict_message_processed.items() if v is not None
+            }
+            sse_message = SSEMessage(**dict_message_filtered)
             redis_key = (
                 f"{self.mas.message_prefix}:{self.mas.name}:{self.current_trace_id}"
             )
-            await self.mas.send_message(sse_message, redis_key)
+            await self.mas.send_message(sse_message, redis_key, group_id=self.group_id)
 
     def set_query(self, query, master_level=False):
         if master_level:
@@ -460,6 +464,24 @@ class OxyRequest(BaseModel):
     async def break_task(self):
         await self.send_message(message="done", event="close")
         self.mas.active_tasks[self.current_trace_id].cancel()
+
+    async def get_feedback_stream(self, channel_id=None):
+        if channel_id is None:
+            channel_id = self.current_trace_id
+        if channel_id not in self.mas.feedback_dict:
+            self.mas.feedback_dict[channel_id] = asyncio.Queue()
+            # 存储当前trace_id用到的所有channel_id
+            if self.current_trace_id not in self.mas.channel_id_dict:
+                self.mas.channel_id_dict[self.current_trace_id] = []
+            self.mas.channel_id_dict[self.current_trace_id].append(channel_id)
+        queue = self.mas.feedback_dict[channel_id]
+        while True:
+            data = await queue.get()
+            if not data:
+                queue.task_done()
+                break
+            yield data
+            queue.task_done()
 
 
 class OxyResponse(BaseModel):
